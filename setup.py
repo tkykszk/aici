@@ -2,9 +2,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="aicli",
+    name="aici",
     version="0.0.1",
     packages=find_packages(),
+    description="A command line interface for ChatGPT",
+    long_description=open('README.md').read(),    
+    long_description_content_type='text/markdown',    
+    url="https://github.com/tkykszk/aici/",
+    license="MIT",
     include_package_data=True,
     install_requires=[
         # プロジェクトの依存関係をここに記述
@@ -15,7 +20,13 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'aicli=aicli.main:main',
+            'aici=aici.main:main',
         ],        
     },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires='>=3.7',  # Python version
 )

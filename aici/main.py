@@ -1,5 +1,5 @@
 """
-AICLI  CLI for AI
+aici  CLI for AI
 
 This module is designed in the form of a CLI to make it easier to invoke AI API calls from other tools.
 
@@ -10,8 +10,8 @@ Functions:
     def main() -> None:
 
 Examples:
-    >>> sys.argv = ['/path/to/aicli', 'Hello']
-    >>> aicli.main()
+    >>> sys.argv = ['/path/to/aici', 'Hello']
+    >>> aici.main()
     Hello! How can I assist you today
 
 
@@ -26,7 +26,7 @@ import pyperclip
 import logging
 
 logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger('aicli')
+logger = logging.getLogger('aici')
 
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))

@@ -1,60 +1,71 @@
-# AICLI
+# aici 🚀
 
-a command line i/f tool for the AI like ChatGPT.
+a command line i/f tool for the AI like ChatGPT. 🤖💬
 
-input
+Use Case: would like to use ChatGPT with editors and tools like Emacs.
 
-    - std input
-    - cli parameter
+# 📦 Installation:
 
-output
+`pip install aici`
 
-    - std output  (streaming, beffering)
-    - clipboard
+## 📥 input
 
-Overview:
-This program is a Python script that queries OpenAI’s ChatGPT model. It takes a user’s prompt as input and outputs the response from ChatGPT. The output can be directed to either standard output or the clipboard. Additionally, you can specify the model to use and set a custom system message.
+💻 std input
+💬 command parameter
 
-Command-Line Description:
+## 📤output
 
-    •	prompt: The prompt for ChatGPT. If "-" is specified, it reads from standard input.
-    •	-m, --model: The OpenAI model to use. The default is read from the environment variable.
-    •	-c, --complete: Whether or not to retrieve the complete message. The default is False.
-    •	-s, --system: Specifies the system message. The default is “You are a helpful assistant.”
-    •	-o, --output: Specifies the output destination. The default is stdout, but if “clip” is specified, it outputs to the clipboard.
+💻 std output (streaming, beffering)
+📋 clipboard
 
-Config:
+# 📖 Overview:
 
-it can be choosen using config file or environment variable OPENAI_API_KEY
+This program is a Python script 🐍 that queries OpenAI’s ChatGPT model. It takes a user’s prompt as input and outputs the response from ChatGPT. The output can be directed to either standard output or the clipboard ✂️. Additionally, you can specify the model to use and set a custom system message .
 
-~/.aicli
+# 💻 Command-Line Description:
+
+prompt: The prompt for ChatGPT. If "-" is specified, it reads from standard input.
+-m, --model: The OpenAI model to use. The default is read from the environment variable.
+-c, --complete: Whether or not to retrieve the complete message. The default is False 🚫.
+-s, --system: Specifies the system message. The default is “You are a helpful assistant.” 👍.
+-o, --output: Specifies the output destination 🏁. The default is stdout, but if “clip” is specified, it outputs to the clipboard 🗒️.
+
+# 🔧 Config Environment Variables or File:
+
+🔑 it can be chosen using environment variable OPENAI_API_KEY or config file
+
+```
+set OPENAI_API_KEY sk-xxxxxxxxxxxxxxxxx
+```
+
+~/.aici
 
 ```
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
 ```
 
-On windows, it is expanded like `C:\Users\{USERNAME}\.aicli`
+🖥️ On windows file path, it is expanded like `C:\Users\{USERNAME}\.aici`
 
-Examples:
+# 👋 Examples:
 
-input from cli
-
-```
-$ aicli Hello
-```
-
-read from stdin
+💨 input from cli
 
 ```
-$ echo Hello | aicli -
+$ aici Hello
 ```
 
-output to clipboard
+💨 read from stdin
 
 ```
-$ echo Hello | aicli - --output clip
+$ echo Hello | aici -
+```
+
+💨 output to clipboard 📋
+
+```
+$ echo Hello | aici - --output clip
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) ✅ file for details.
