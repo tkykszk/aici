@@ -1,9 +1,15 @@
+"""
+aici  CLI for AI
+
+This module is designed in the form of a CLI to make it easier to invoke AI API calls from other tools.
+
+"""
 import os
 import sys
 
 from dotenv import load_dotenv
 
-env_candidates = [os.path.expanduser('~/.aicli'),]
+env_candidates = [os.path.expanduser('~/.aici'),]
 
 ary = []
 for fn in env_candidates:
