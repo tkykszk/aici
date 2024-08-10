@@ -22,6 +22,7 @@ API_KEY = os.environ.get('OPENAI_API_KEY')
 if API_KEY == None:
     raise RuntimeError("API KEY info not found")
 
+from .main import main
 
 
 
