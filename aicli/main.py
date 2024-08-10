@@ -1,3 +1,22 @@
+"""
+AICLI  CLI for AI
+
+This module is designed in the form of a CLI to make it easier to invoke AI API calls from other tools.
+
+Functions:
+    def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL, 
+                  system:str=DEFAULT_SYSTEM, output=sys.stdout) -> None:
+
+    def main() -> None:
+
+Examples:
+    >>> sys.argv = ['/path/to/aicli', 'Hello']
+    >>> aicli.main()
+    Hello! How can I assist you today
+
+
+"""
+
 import os
 import io
 import sys
@@ -15,7 +34,26 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 DEFAULT_MODEL = "gpt-4-0613"
 DEFAULT_SYSTEM = "You are a helpful assistant."
 
-def query_chatgpt(prompt, complete=False, model=DEFAULT_MODEL, system=DEFAULT_SYSTEM, output=sys.stdout):
+def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL, 
+                  system:str=DEFAULT_SYSTEM, output=sys.stdout) -> None:
+    """  Sends a prompt to the OpenAI ChatGPT API and handles the response, either streaming or complete.
+
+    Args:
+        prompt (str): The prompt to send to the ChatGPT API.
+        complete (bool): If False, the response will be streamed; if True, the complete response will be retrieved at once. Default is False.
+        model (str): The model name to use for the API call. Default is set to the module's DEFAULT_MODEL.
+        system (str): The system message to send as context to the API. Default is set to the module's DEFAULT_SYSTEM.
+        output (file-like object): The output stream where the response will be written. Default is sys.stdout.
+
+    Returns:
+        None: This function doesn't return a value, but it prints the API response to the specified output stream.
+
+    Raises:
+        openai.APIConnectionError: If the server could not be reached.
+        openai.RateLimitError: If the API rate limit is exceeded (429 status code).
+        openai.APIStatusError: If any other non-200-range status code is received.
+    """
+
     try:
         if complete == False:
             # Streaming response from OpenAI's API
@@ -45,7 +83,7 @@ def query_chatgpt(prompt, complete=False, model=DEFAULT_MODEL, system=DEFAULT_SY
                     {"role": "user", "content": prompt}
                 ]
             )
-            
+
             print(response.choices[0].message.content, end="", flush=True, file=output)
 
     except openai.APIConnectionError as e:
@@ -58,7 +96,7 @@ def query_chatgpt(prompt, complete=False, model=DEFAULT_MODEL, system=DEFAULT_SY
         print(e.status_code)
         print(e.response)        
         
-def main():
+def main() -> None:
 
     try:
         parser = argparse.ArgumentParser(description="Query OpenAI's ChatGPT")
