@@ -21,6 +21,7 @@ import os
 import io
 import sys
 import argparse
+import openai
 from openai import OpenAI
 import pyperclip
 import logging
@@ -32,7 +33,7 @@ logger = logging.getLogger('aici')
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-DEFAULT_MODEL = os.getenv("OPENAI_CHATGPT_MODEL", "gpt-4-0613")
+DEFAULT_MODEL = os.getenv("OPENAI_CHATGPT_MODEL", "gpt-4o")
 DEFAULT_SYSTEM = os.getenv("OPENAI_CHATGPT_SYSTEM", "You are a helpful assistant.")
 
 def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL, 
@@ -74,6 +75,7 @@ def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL,
                 print(chunk_message, end="", flush=True, file=output)
                 collected_response += chunk_message
         
+            print() # Print a newline at the end
             return collected_response
     
         else:
@@ -84,8 +86,8 @@ def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL,
                     {"role": "user", "content": prompt}
                 ]
             )
-
-            print(response.choices[0].message.content, end="", flush=True, file=output)
+            # Print a newline at the end
+            print(response.choices[0].message.content, flush=True, file=output)
 
     except openai.APIConnectionError as e:
         logger.error("The server could not be reached", exc_info=e)
