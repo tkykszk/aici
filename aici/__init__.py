@@ -6,10 +6,10 @@ This module is designed in the form of a CLI to make it easier to invoke AI API 
 """
 import os
 import sys
-
+from .version import __version__
 from dotenv import load_dotenv
 
-env_candidates = [os.path.expanduser('~/.aici'),]
+env_candidates = [os.path.expanduser('~/.config/aici/config'),]
 
 ary = []
 for fn in env_candidates:

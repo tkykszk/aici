@@ -1,84 +1,30 @@
-# aici 🚀
+;;; aici.el --- A brief description of the package
 
-[![PyPI version](https://img.shields.io/pypi/v/aici.svg)](https://pypi.org/project/aici/) [![Python Versions](https://img.shields.io/pypi/pyversions/aici.svg)](https://pypi.org/project/aici/) [![License](https://img.shields.io/pypi/l/aici.svg)](https://opensource.org/licenses/MIT)
+;; Copyright (C) 2024 Taka Suzuki
 
-a command line i/f tool for the AI like ChatGPT. 🤖💬
+;; Permission is hereby granted, free of charge, to any person obtaining a copy
+;; of this software and associated documentation files (the "Software"), to deal
+;; in the Software without restriction, including without limitation the rights
+;; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the Software is
+;; furnished to do so, subject to the following conditions:
 
-Use Case: would like to use ChatGPT with editors and tools like Emacs.
+;; The above copyright notice and this permission notice shall be included in
+;; all copies or substantial portions of the Software.
 
-![commandline](images/aicissv.webp)
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+;; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+;; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+;; THE SOFTWARE.
 
-![emacs](images/aiciemacsssv.webp)
+;;; Commentary:
 
-# 📦 Installation:
+;; AICI i/f code
 
-`pip install aici`
-
-## 📥 input
-
-💻 std input
-💬 command parameter
-
-## 📤output
-
-💻 std output (streaming, beffering)
-📋 clipboard
-
-# 📖 Overview:
-
-This program is a Python script 🐍 that queries OpenAI’s ChatGPT model. It takes a user’s prompt as input and outputs the response from ChatGPT. The output can be directed to either standard output or the clipboard ✂️. Additionally, you can specify the model to use and set a custom system message .
-
-# 💻 Command-Line Description:
-
-prompt: The prompt for ChatGPT. If "-" is specified, it reads from standard input.
--m, --model: The OpenAI model to use. The default is read from the environment variable.
--c, --complete: Whether or not to retrieve the complete message. The default is False 🚫.
--s, --system: Specifies the system message. The default is “You are a helpful assistant.” 👍.
--o, --output: Specifies the output destination 🏁. The default is stdout, but if “clip” is specified, it outputs to the clipboard 🗒️.
-
-# 🔧 Config Environment Variables or File:
-
-🔑 it can be chosen using environment variable OPENAI_API_KEY or config file
-
-```
-set OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
-```
-
-~/.aici
-
-```
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
-```
-
-🖥️ On Windows file path, it is expanded like `C:\Users\{USERNAME}\.aici`
-
-# 👋 Examples:
-
-💨 input from cli
-
-```
-$ aici Hello
-```
-
-💨 read from stdin
-
-```
-$ echo Hello | aici -
-```
-
-💨 output to clipboard 📋
-
-```
-$ echo Hello | aici - --output clip
-```
-
-# 👋 emacs
-
-## Emacs Lisp Code Example
-
-Below is the content of `emacs/aici.el`
-
-```elisp
+;;; Code:
 
 (defun aici-call ()
   "Send selected region or prompt for input if no region is selected to the 'aici' command and insert the output in real-time."
@@ -129,8 +75,9 @@ Below is the content of `emacs/aici.el`
       ;; Ensure the output buffer is displayed after starting the process
       (display-buffer output-buffer)))
 
-```
 
-## License
+;; Assign to your preferred shortcut like.
+; (global-set-key (kbd "C-c j") 'aici-call)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+

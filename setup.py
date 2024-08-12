@@ -1,9 +1,11 @@
 # setup.py
 from setuptools import setup, find_packages
+# Import the version
+from aici.version import __version__
 
 setup(
     name="aici",
-    version="0.0.2",
+    version=__version__,
     packages=find_packages(),
     description="A command line interface for ChatGPT",
     long_description=open('README.md').read(),    

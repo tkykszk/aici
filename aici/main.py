@@ -24,6 +24,7 @@ import argparse
 from openai import OpenAI
 import pyperclip
 import logging
+from . import __version__
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger('aici')
@@ -31,8 +32,8 @@ logger = logging.getLogger('aici')
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-DEFAULT_MODEL = "gpt-4-0613"
-DEFAULT_SYSTEM = "You are a helpful assistant."
+DEFAULT_MODEL = os.getenv("OPENAI_CHATGPT_MODEL", "gpt-4-0613")
+DEFAULT_SYSTEM = os.getenv("OPENAI_CHATGPT_SYSTEM", "You are a helpful assistant.")
 
 def query_chatgpt(prompt:str, complete:bool=False, model:str=DEFAULT_MODEL, 
                   system:str=DEFAULT_SYSTEM, output=sys.stdout) -> None:
@@ -100,13 +101,22 @@ def main() -> None:
 
     try:
         parser = argparse.ArgumentParser(description="Query OpenAI's ChatGPT")
-        parser.add_argument('prompt', type=str, help='The prompt to send to ChatGPT or "-" to read from stdin')
+        parser.add_argument('prompt', type=str, nargs='?', default=argparse.SUPPRESS, help='The prompt to send to ChatGPT or "-" to read from stdin')
+        parser.add_argument('-v', '--version', action='store_true', help='Show version and exit')
         parser.add_argument('-m', '--model', default=DEFAULT_MODEL, help='model name')
         parser.add_argument('-c', '--complete', default=False, action='store_true', help='get a message when completed')
         parser.add_argument('-s', '--system', default=DEFAULT_SYSTEM, help='spcify a system content')
         parser.add_argument('-o', '--output', help='output destination, "clip" for clipboard', default=sys.stdout)
         args = parser.parse_args()
 
+        if args.version:
+            print(__version__)
+            sys.exit(0)
+            # Check if 'prompt' exists and is not None
+
+        if args.prompt is None:
+            parser.error("the following arguments are required: prompt")
+    
         # Check if the prompt is "-" and read from stdin if so
         if args.prompt == "-":
             prompt = sys.stdin.read().strip()
