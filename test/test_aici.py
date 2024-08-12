@@ -40,6 +40,24 @@ class Testaici:
         except Exception as e:
             pytest.fail(f"command error: {e}")
             
+    def test_query_with_model(self, monkeypatch):
+        # REAL CALL to API
+        test_args = ['aici', 'Hello', '--model=gpt-4o-mini-2024-07-18']
+        monkeypatch.setattr(sys, 'argv', test_args)
+        try:
+            aici.main()
+        except Exception as e:
+            pytest.fail(f"command error: {e}")
+            
+    def test_query_with_system(self, monkeypatch):
+        # REAL CALL to API
+        test_args = ['aici', 'Hello', '--system="answer in Japnese Romaji only"']
+        monkeypatch.setattr(sys, 'argv', test_args)
+        try:
+            aici.main()
+        except Exception as e:
+            pytest.fail(f"command error: {e}")
+            
     def test_option_complete(self, monkeypatch):
         # REAL CALL to API
         test_args = ['aici', 'Hello', '--complete']

@@ -4,7 +4,7 @@
 
 a command line i/f tool for the AI like ChatGPT. 🤖💬
 
-Use Case: would like to use ChatGPT with editors and tools like Emacs.
+Use Case: would like to use ChatGPT with editors like Emacs and/or automated tools.
 
 ![commandline](images/aicissv.webp)
 
@@ -13,6 +13,21 @@ Use Case: would like to use ChatGPT with editors and tools like Emacs.
 # 📦 Installation:
 
 `pip install aici`
+
+# 📖 Overview:
+
+This program is based on Python🐍 that queries OpenAI’s ChatGPT model. It takes a user’s prompt as input and outputs the response from ChatGPT. The output can be directed to either standard output or the clipboard📋. Additionally, you can specify the model to use and set a custom system message .
+
+# 💻 Command-Line Description:
+
+| Argument       | env val               | Default                      | Type | Description                                               |
+| -------------- | --------------------- | ---------------------------- | ---- | --------------------------------------------------------- |
+| -v, --version  |                       | -                            |      | Show version and exit                                     |
+| prompt         |                       | -                            | str  | The prompt to send to ChatGPT or "-" to read from stdin   |
+| -m, --model    | OPENAI_CHATGPT_MODEL  | gpt-4o                       | str  | model name                                                |
+| -c, --complete |                       | False (default streaming)    | bool | get a message when completed                              |
+| -s, --system   | OPENAI_CHATGPT_SYSTEM | You are a helpful assistant. | str  | specify the content value of role:system for the chat API |
+| -o, --output   |                       | stdout                       | str  | output destination, "clip" for clipboard                  |
 
 ## 📥 input
 
@@ -24,18 +39,6 @@ Use Case: would like to use ChatGPT with editors and tools like Emacs.
 💻 std output (streaming, beffering)
 📋 clipboard
 
-# 📖 Overview:
-
-This program is a Python script 🐍 that queries OpenAI’s ChatGPT model. It takes a user’s prompt as input and outputs the response from ChatGPT. The output can be directed to either standard output or the clipboard ✂️. Additionally, you can specify the model to use and set a custom system message .
-
-# 💻 Command-Line Description:
-
-prompt: The prompt for ChatGPT. If "-" is specified, it reads from standard input.
--m, --model: The OpenAI model to use. The default is read from the environment variable.
--c, --complete: Whether or not to retrieve the complete message. The default is False 🚫.
--s, --system: Specifies the system message. The default is “You are a helpful assistant.” 👍.
--o, --output: Specifies the output destination 🏁. The default is stdout, but if “clip” is specified, it outputs to the clipboard 🗒️.
-
 # 🔧 Config Environment Variables or File:
 
 🔑 it can be chosen using environment variable OPENAI_API_KEY or config file
@@ -44,13 +47,18 @@ prompt: The prompt for ChatGPT. If "-" is specified, it reads from standard inpu
 set OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
 ```
 
-~/.aici
+it will check the files in the following locations (in the order listed below).
+~/.config/aici/config ~/.aici
 
 ```
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
 ```
 
-🖥️ On Windows file path, it is expanded like `C:\Users\{USERNAME}\.aici`
+🖥️ On Windows file path, it is expanded like
+| File path|
+|---|
+| `C:\Users\{USERNAME}\.config\aici\config` |
+|`C:\Users\{USERNAME}\.aici`|
 
 # 👋 Examples:
 
