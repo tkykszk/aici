@@ -26,8 +26,7 @@ setup(
     license="MIT",
     include_package_data=True,
     install_requires=[
-        "python-dotenv",
-        "openai>1.40.1",
+        "openai>=1.39.0",  # for compatibility with Py3.7
         "pytest",
         "pyperclip",
         "python-dotenv",
