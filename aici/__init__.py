@@ -13,9 +13,18 @@ import os
 import sys
 from .version import __version__
 from dotenv import load_dotenv
+import platform
 
-env_candidates = [os.path.expanduser('~/.config/aici/config'), # 1st priority
-                  os.path.expanduser('~/.aici')] # 2nd priority
+env_candidates = []
+if platform.system() == 'Windows': # Windows specific
+    env_candidates.extend([
+        os.path.expanduser('~/Appdata/Local/aici/config'), # 1st priority
+        os.path.expanduser('~/Appdata/Roaming/aici/config')
+    ]) # 2nd priority
+env_candidates.extend([
+            os.path.expanduser('~/.config/aici/config'), # 1st priority
+            os.path.expanduser('~/.aici')]) # 2nd priority
+
 API_KEY = None
 _API_KEY = os.environ.get('OPENAI_API_KEY') # preserve value before reading config file
 

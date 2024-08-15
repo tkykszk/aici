@@ -1,7 +1,6 @@
 """ Some tests need appropriate API-KEY for the OpenAI API.
 
 """
-
 import os
 import sys
 import io

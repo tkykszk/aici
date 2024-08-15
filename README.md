@@ -29,6 +29,8 @@ This program is based on Python🐍 that queries OpenAI’s ChatGPT model. It ta
 | -s, --system   | OPENAI_CHATGPT_SYSTEM | You are a helpful assistant. | str  | specify the content value of role:system for the chat API |
 | -o, --output   |                       | stdout                       | str  | output destination, "clip" for clipboard                  |
 
+[chatgpt model document](https://platform.openai.com/docs/models)
+
 ## 📥 input
 
 💻 std input
@@ -55,10 +57,13 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
 ```
 
 🖥️ On Windows file path, it is expanded like
-| File path|
-|---|
-| `C:\Users\{USERNAME}\.config\aici\config` |
-|`C:\Users\{USERNAME}\.aici`|
+| File path| Windows Specific|
+|--------------------------------------------------|:--:|
+| `C:\Users\{USERNAME}\AppData\Local\aici\config` |✔ |
+| `C:\Users\{USERNAME}\AppData\Roaming\aici\config`|✔ |
+| `C:\Users\{USERNAME}\.config\aici\config` | |
+|`C:\Users\{USERNAME}\.aici` | |
+(The priority of the applied config files is in the order listed from top to bottom.)
 
 # 👋 Examples:
 
