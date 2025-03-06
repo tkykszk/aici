@@ -99,6 +99,10 @@ ipython_config.py
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+
+# プロジェクト固有の機密ファイル
+MAINTENANCE.md
+WORK.md
 #poetry.lock
 
 # pdm
