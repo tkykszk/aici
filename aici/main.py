@@ -30,15 +30,48 @@ from . import __version__
 DEFAULT_MODEL = "gpt-3.5-turbo"
 DEFAULT_SYSTEM = "You are a helpful assistant."
 
-# ログ設定 - デフォルトはINFOレベル、ファイルに出力
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(os.path.expanduser("~/.config/aici/aici.log")),
-    ],
-)
+# ログ設定 - デフォルトはINFOレベル
 logger = logging.getLogger("aici")
+
+# ログファイルのパスを設定ファイルと同じ場所に設定
+def setup_logging():
+    from . import ENV_FILE, CONFIG_LOADED
+    
+    # デフォルトのログファイルパス
+    log_dir = os.path.expanduser("~/.config/aici")
+    log_file = os.path.join(log_dir, "aici.log")
+    
+    # 設定ファイルが読み込まれている場合は、そのディレクトリにログファイルを作成
+    if CONFIG_LOADED and ENV_FILE:
+        config_dir = os.path.dirname(ENV_FILE)
+        if os.path.isdir(config_dir):
+            log_file = os.path.join(config_dir, "aici.log")
+    
+    # ログディレクトリが存在しない場合は作成を試みる
+    log_dir = os.path.dirname(log_file)
+    try:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
+        # ログファイルハンドラーを設定
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        logger.addHandler(file_handler)
+        
+    except (IOError, PermissionError) as e:
+        # ログファイルに書き込めない場合は警告を出して続行
+        print(f"Warning: Could not create log file at {log_file}. Logging to file is disabled.")
+        print(f"Error: {str(e)}")
+    
+    # コンソールハンドラーを設定
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)  # デフォルトは警告以上のみ表示
+    console_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
+    logger.addHandler(console_handler)
+    
+    # ロガーのレベルを設定
+    logger.setLevel(logging.INFO)
 
 # Check if we're in test mode
 is_test_mode = os.environ.get('AICI_TEST_MODE', 'false').lower() == 'true'
@@ -219,7 +252,10 @@ def query_deepseek(
 
 
 def main() -> None:
-
+    """Main function for the CLI"""
+    # ログ設定を初期化
+    setup_logging()
+    
     try:
         parser = argparse.ArgumentParser(
             description="AICI - AI Chat Interface: OpenAI/DeepSeekモデルを簡単に利用するコマンドラインツール",
@@ -291,15 +327,12 @@ def main() -> None:
         # デバッグモードの設定
         if args.verbose:
             # ログレベルをDEBUGに設定
-            logging.getLogger().setLevel(logging.DEBUG)
             logger.setLevel(logging.DEBUG)
             
-            # 標準エラー出力にもログを表示するハンドラーを追加
-            stderr_handler = logging.StreamHandler(sys.stderr)
-            stderr_handler.setLevel(logging.DEBUG)
-            formatter = logging.Formatter("%(levelname)s - %(message)s")
-            stderr_handler.setFormatter(formatter)
-            logger.addHandler(stderr_handler)
+            # すべてのハンドラーのレベルをDEBUGに設定
+            for handler in logger.handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(logging.DEBUG)
             
             logger.debug("Debug mode enabled")
             logger.debug("Model: %s", args.model)
