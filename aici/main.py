@@ -24,9 +24,13 @@ import openai
 from openai import OpenAI
 import pyperclip
 import logging
+import time
+import random
 from . import __version__
+from .i18n import get_message
 
-logging.basicConfig(level=logging.WARNING)
+# Log configuration
+logging.basicConfig(level=logging.WARNING, format='%(message)s')
 logger = logging.getLogger("aici")
 
 # Initialize the OpenAI client with your API key
@@ -34,8 +38,60 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 DEFAULT_MODEL = os.getenv("OPENAI_CHATGPT_MODEL", "gpt-4o")
 DEFAULT_SYSTEM = os.getenv("OPENAI_CHATGPT_SYSTEM", "You are a helpful assistant.")
+MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "3"))
+INITIAL_RETRY_DELAY = float(os.getenv("OPENAI_INITIAL_RETRY_DELAY", "1.0"))
+MAX_RETRY_DELAY = float(os.getenv("OPENAI_MAX_RETRY_DELAY", "60.0"))
 
 
+def retry_with_exponential_backoff(func):
+    """Decorator function to implement retry logic
+
+    Args:
+        func: Function to retry
+
+    Returns:
+        wrapper: Wrapper function implementing retry logic
+    """
+    def wrapper(*args, **kwargs):
+        retry_count = 0
+        retry_delay = INITIAL_RETRY_DELAY
+        
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except openai.RateLimitError as e:
+                retry_count += 1
+                if retry_count > MAX_RETRIES:
+                    # Display user-friendly error message
+                    print(f"\n{get_message('error_api_quota')}")
+                    print(f"\n{get_message('solutions_header')}")
+                    print(get_message('solution_check_dashboard'))
+                    print(get_message('solution_check_billing'))
+                    print(get_message('solution_upgrade_plan'))
+                    print(get_message('solution_contact_support'))
+                    # Log detailed information for debugging
+                    logger.debug(f"API quota limit error details: {str(e)}", exc_info=False)
+                    # Exit the program instead of re-raising the exception
+                    sys.exit(1)
+                
+                # Add jitter to avoid collision of simultaneous requests
+                jitter = random.uniform(0, 0.1) * retry_delay
+                sleep_time = retry_delay + jitter
+                
+                # Display user-friendly message
+                print(f"\n{get_message('rate_limit_retry', sleep_time=sleep_time, retry_count=retry_count, max_retries=MAX_RETRIES)}")
+                time.sleep(sleep_time)
+                
+                # Exponential backoff with maximum value
+                retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
+            except Exception as e:
+                # Do not retry other errors
+                raise e
+    
+    return wrapper
+
+
+@retry_with_exponential_backoff
 def query_chatgpt(
     prompt: str,
     complete: bool = False,
@@ -94,19 +150,28 @@ def query_chatgpt(
             print(response.choices[0].message.content, flush=True, file=output)
 
     except openai.APIConnectionError as e:
-        logger.error("The server could not be reached", exc_info=e)
-        print(e.__cause__)  # an underlying Exception, likely raised within httpx.
-    except openai.RateLimitError as e:
-        logger.error(
-            "A 429 status code was received; we should back off a bit.", exc_info=e
-        )
+        # Display user-friendly error message
+        print(f"\n{get_message('error_api_connection')}")
+        print(f"\n{get_message('check_internet')}")
+        # Log detailed information for debugging
+        logger.debug(f"Connection error details: {str(e)}", exc_info=False)
+        sys.exit(1)
+    except openai.RateLimitError:
+        # Do nothing here as it will be handled by the retry logic
+        # If maximum retries are exceeded, it will be handled within the retry logic
+        raise
     except openai.APIStatusError as e:
-        logger.error("Another non-200-range status code was received", exc_info=e)
-        print(e.status_code)
-        print(e.response)
+        # Display user-friendly error message
+        print(f"\n{get_message('error_api_status', status_code=e.status_code)}")
+        print(f"\n{get_message('api_retry_later')}")
+        # Log detailed information for debugging
+        logger.debug(f"API error details: {str(e.response)}", exc_info=False)
+        sys.exit(1)
 
 
 def main() -> None:
+    # Declare that we'll use the global variable within the function
+    global MAX_RETRIES
 
     try:
         parser = argparse.ArgumentParser(description="Query OpenAI's ChatGPT")
@@ -131,12 +196,20 @@ def main() -> None:
         parser.add_argument(
             "-s", "--system", default=DEFAULT_SYSTEM, help="spcify a system content"
         )
-        parser.add_argument("-V", "--VERBOSE", help="spcify a verbose output")
+        parser.add_argument(
+            "-V", "--verbose", action="store_true", help="Show detailed error information (for debugging)"
+        )
         parser.add_argument(
             "-o",
             "--output",
             help='output destination, "clip" for clipboard',
             default=sys.stdout,
+        )
+        parser.add_argument(
+            "--max-retries",
+            type=int,
+            default=MAX_RETRIES,
+            help="Maximum number of retries when API rate limit is reached",
         )
         args = parser.parse_args()
 
@@ -158,7 +231,18 @@ def main() -> None:
             buffer = io.StringIO()
         else:
             buffer = sys.stdout
-
+            
+        # Update the global MAX_RETRIES with the value specified in command line arguments
+        MAX_RETRIES = args.max_retries
+        
+        # Configure detailed logging
+        if args.verbose:
+            logger.setLevel(logging.DEBUG)
+            # Add a handler to output detailed logs to the console
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.DEBUG)
+            logger.addHandler(console_handler)
+        
         query_chatgpt(
             prompt,
             model=args.model,
@@ -171,8 +255,13 @@ def main() -> None:
             pyperclip.copy(buffer.getvalue())
 
     except Exception as e:
-        logger.error(f"Error", exc_info=e)
-        raise Exception(f"Error: {e}")
+        # Display user-friendly error message
+        print(f"\n{get_message('error_unexpected')}")
+        print(f"\n{str(e)}")
+        print(f"\n{get_message('verbose_info')}")
+        # Log detailed information for debugging
+        logger.debug(f"Error details: {str(e)}", exc_info=args.verbose if 'args' in locals() and hasattr(args, 'verbose') else False)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
