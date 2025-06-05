@@ -16,20 +16,28 @@ Use Case: would like to use AI models with editors like Emacs and/or automated t
 
 # 📖 Overview:
 
-This program is based on Python🐍 that queries AI models from OpenAI or DeepSeek. It takes a user's prompt as input and outputs the response from the selected AI model. The output can be directed to either standard output or the clipboard📋. Additionally, you can specify the model to use and set a custom system message either directly or from a file.
+AICI (AI Chat Interface) is a Python🐍 command-line tool for interacting with AI models from OpenAI or DeepSeek. It takes a user's prompt as input and outputs the response from the selected AI model. The output can be directed to either standard output or the clipboard📋. 
+
+**Key Features:**
+- Support for OpenAI and DeepSeek models
+- Streaming responses (or complete responses with `-c`)
+- Custom system messages via direct input or file
+- Clipboard output support
+- Environment variable configuration
+- JSON conversation format support
 
 # 💻 Command-Line Description:
 
 | Argument       | env val               | Default                      | Type | Description                                               |
 | -------------- | --------------------- | ---------------------------- | ---- | --------------------------------------------------------- |
-| -v, --version  |                       | -                            |      | Show version and exit                                     |
-| prompt         |                       | -                            | str  | The prompt to send to the AI or "-" to read from stdin    |
-| -m, --model    | AICI_MODEL            | gpt-3.5-turbo                | str  | Model name to use (e.g. gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat) |
-| -c, --complete |                       | False (default streaming)    | bool | Get a complete response at once instead of streaming      |
-| -s, --system   | AICI_SYSTEM           | You are a helpful assistant. | str  | Specify a system message                                  |
-| -sf, --system-file | AICI_SYSTEM_FILE   | -                            | str  | Specify a file containing the system message              |
-| -V, --VERBOSE  |                       | False                        | bool | Show detailed debug information                           |
-| -o, --output   |                       | stdout                       | str  | Output destination, "clip" for clipboard                  |
+| -v, --version  |                       | -                            |      | バージョンを表示して終了                                     |
+| prompt         |                       | -                            | str  | AIに送るプロンプト。"-"を指定すると標準入力から読み込みます    |
+| -m, --model    | AICI_MODEL            | gpt-3.5-turbo                | str  | 使用するモデル名 (gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat など) |
+| -c, --complete |                       | False (default streaming)    | bool | ストリーミングせずに完全な応答を一度に取得      |
+| -s, --system   | AICI_SYSTEM           | You are a helpful assistant. | str  | システムメッセージを指定                                  |
+| -S, --system-file | AICI_SYSTEM_FILE   | -                            | str  | システムメッセージを含むファイルを指定              |
+| -V, --verbose  |                       | False                        | bool | 詳細なデバッグ情報を表示                           |
+| -o, --output   |                       | stdout                       | str  | 出力先を指定。"clip"でクリップボードにコピー                  |
 
 [OpenAI models documentation](https://platform.openai.com/docs/models)
 [DeepSeek models documentation](https://platform.deepseek.com/api)
@@ -66,7 +74,7 @@ set AICI_DEEPSEEK_MODEL=deepseek-chat # DeepSeek specific model
 
 # System Message
 set AICI_SYSTEM="You are a helpful assistant."
-set AICI_SYSTEM_FILE=~/path/to/system_message.txt
+set AICI_SYSTEM_FILE=~/path/to/system_message.txt  # システムメッセージをファイルから読み込む
 ```
 
 ## Config Files
@@ -88,7 +96,7 @@ AICI_DEEPSEEK_MODEL=deepseek-chat
 
 # System Message
 AICI_SYSTEM=You are a helpful assistant.
-AICI_SYSTEM_FILE=~/path/to/system_message.txt
+AICI_SYSTEM_FILE=~/path/to/system_message.txt  # システムメッセージをファイルから読み込む
 ```
 
 🖥️ On Windows file path, it is expanded like
@@ -117,8 +125,14 @@ $ echo Hello | aici -
 💨 Specify a model
 
 ```
-$ aici -mgpt-4o "What's the weather like today?"
-$ aici -mdeepseek-chat "Tell me about quantum computing"
+$ aici -m gpt-4o "What's the weather like today?"
+$ aici -m deepseek-chat "Tell me about quantum computing"
+```
+
+💨 Use a system message file
+
+```
+$ aici -S system.txt "Tell me about quantum computing"
 ```
 
 💨 Use a system message from a file

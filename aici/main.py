@@ -221,16 +221,26 @@ def query_deepseek(
 def main() -> None:
 
     try:
-        parser = argparse.ArgumentParser(description="Query DeepSeek AI")
+        parser = argparse.ArgumentParser(
+            description="AICI - AI Chat Interface: OpenAI/DeepSeekモデルを簡単に利用するコマンドラインツール",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""例:
+  aici "日本の首都はどこですか"                  # 基本的な使い方
+  aici -m gpt-4o "日本の首都はどこですか"        # モデルを指定
+  aici -S system.txt "日本の首都はどこですか"   # システムメッセージファイルを指定
+  aici -o clip "日本の首都はどこですか"        # 結果をクリップボードにコピー
+  echo "日本の首都はどこですか" | aici -       # 標準入力から読み込み
+"""
+        )
         parser.add_argument(
             "prompt",
             type=str,
             nargs="?",
             default=argparse.SUPPRESS,
-            help='The prompt to send to DeepSeek or "-" to read from stdin',
+            help='AIに送るプロンプト。"-"を指定すると標準入力から読み込みます',
         )
         parser.add_argument(
-            "-v", "--version", action="store_true", help="Show version and exit"
+            "-v", "--version", action="store_true", help="バージョンを表示して終了"
         )
         # モデル名はコマンドライン引数か環境変数から取得
         default_model = DEFAULT_MODEL
@@ -244,31 +254,32 @@ def main() -> None:
         parser.add_argument(
             "-m", "--model", 
             default=default_model, 
-            help="Model name to use (e.g. gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat)"
+            help="使用するモデル名 (gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat など)"
         )
         parser.add_argument(
             "-c",
             "--complete",
             default=False,
             action="store_true",
-            help="Get a complete response at once instead of streaming",
+            help="ストリーミングせずに完全な応答を一度に取得",
         )
         parser.add_argument(
-            "-s", "--system", default=DEFAULT_SYSTEM, help="Specify a system message"
+            "-s", "--system", default=DEFAULT_SYSTEM, help="システムメッセージを指定"
         )
         parser.add_argument(
-            "-sf", "--system-file", 
-            help="Specify a file containing the system message"
+            "-S", "--system-file", 
+            help="システムメッセージを含むファイルを指定"
         )
         parser.add_argument(
-            "-V", "--VERBOSE", 
+            "-V", "--verbose", "--VERBOSE", 
+            dest="verbose",
             action="store_true", 
-            help="Show detailed debug information"
+            help="詳細なデバッグ情報を表示"
         )
         parser.add_argument(
             "-o",
             "--output",
-            help='Output destination, "clip" for clipboard',
+            help='出力先を指定。"clip"でクリップボードにコピー',
             default=sys.stdout,
         )
         args = parser.parse_args()
@@ -278,7 +289,7 @@ def main() -> None:
             sys.exit(0)
             
         # デバッグモードの設定
-        if args.VERBOSE:
+        if args.verbose:
             logging.getLogger().setLevel(logging.DEBUG)
             logger.setLevel(logging.DEBUG)
             logger.debug("デバッグモードが有効化されました")
@@ -343,7 +354,7 @@ def main() -> None:
             buffer = sys.stdout
 
         # デバッグ情報の記録
-        if args.VERBOSE:
+        if args.verbose:
             prompt_preview = prompt[:50] + ('...' if len(prompt) > 50 else '')
             system_preview = args.system[:50] + ('...' if len(args.system) > 50 else '')
             logger.debug("プロンプト: %s", prompt_preview)
