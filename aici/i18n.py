@@ -67,6 +67,18 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         
         # 詳細情報メッセージ
         'verbose_info': "For detailed error information, use the -V or --verbose option.",
+        
+        # コンフィグファイル関連メッセージ
+        'config_not_found': "Configuration file not found. Please create a configuration file in one of the following locations:",
+        'config_template_header': "\nConfiguration file template:",
+        'config_template_comment': "# OpenAI API Settings",
+        'api_key_info': "\nYou can get your OpenAI API key from https://platform.openai.com/api-keys",
+        'api_key_env_info': "Alternatively, you can set your API key directly in the OPENAI_API_KEY environment variable.",
+        'config_not_found_error': "Configuration file not found. Please refer to the instructions above to set it up.",
+        'api_key_not_set': "API key is not set. Please set your API key using one of the following methods:",
+        'api_key_config_option': "1. Add OPENAI_API_KEY=your_api_key_here to your configuration file",
+        'api_key_env_option': "2. Set the OPENAI_API_KEY environment variable",
+        'api_key_not_found': "API key information not found.",
     },
     'ja': {
         # エラーメッセージ
@@ -93,6 +105,18 @@ MESSAGES: Dict[str, Dict[str, str]] = {
         
         # 詳細情報メッセージ
         'verbose_info': "詳細なエラー情報を確認するには、-V または --verbose オプションを使用してください。",
+        
+        # コンフィグファイル関連メッセージ
+        'config_not_found': "コンフィグファイルが見つかりません。以下のいずれかの場所にコンフィグファイルを作成してください：",
+        'config_template_header': "\nコンフィグファイルのテンプレート:",
+        'config_template_comment': "# OpenAI API設定",
+        'api_key_info': "\nOpenAI APIキーは https://platform.openai.com/api-keys から取得できます。",
+        'api_key_env_info': "または、環境変数 OPENAI_API_KEY に直接APIキーを設定することもできます。",
+        'config_not_found_error': "コンフィグファイルが見つかりません。上記の説明を参考に設定してください。",
+        'api_key_not_set': "APIキーが設定されていません。以下のいずれかの方法でAPIキーを設定してください：",
+        'api_key_config_option': "1. コンフィグファイルに OPENAI_API_KEY=your_api_key_here を追加",
+        'api_key_env_option': "2. 環境変数 OPENAI_API_KEY にAPIキーを設定",
+        'api_key_not_found': "APIキー情報が見つかりません。",
     }
 }
 
