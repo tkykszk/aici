@@ -24,6 +24,10 @@
 
 ;; AICI i/f code
 
+;; for example, assign to your preferred shortcut like.
+;; (global-set-key (kbd "C-c j") 'aici-call)
+
+
 ;;; Code:
 
 (defun aici-call ()
@@ -75,9 +79,10 @@
       ;; Ensure the output buffer is displayed after starting the process
       (display-buffer output-buffer)))
 
+(provide 'aici)
 
-;; Assign to your preferred shortcut like.
-; (global-set-key (kbd "C-c j") 'aici-call)
 
+
+;;; aici.el ends here
 
 
