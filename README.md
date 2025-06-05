@@ -79,6 +79,72 @@ $ aici Hello
 $ echo Hello | aici -
 ```
 
+## 🔄 Advanced Input Formats
+
+## JSON Input Format
+
+Aici supports advanced input formats through stdin, allowing you to provide conversation context and complex prompts using JSON. When using the `-` parameter to read from stdin, aici will automatically detect if the input is JSON and process it accordingly.
+
+### JSON Conversation Format
+
+You can provide a complete conversation context using the following JSON format:
+
+```json
+{
+  "prompts": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello, how are you?"},
+    {"role": "assistant", "content": "I'm doing well, thank you for asking!"},
+    {"role": "user", "content": "Tell me a joke."}
+  ]
+}
+```
+
+Each prompt in the array should contain a `role` and `content` field. The supported roles are:
+
+- `system`: Sets the system instructions for the AI
+- `user`: Represents messages from the user
+- `assistant`: Represents previous responses from the AI
+
+### Alternative JSON Format
+
+For convenience, aici also supports an alternative format where the role is implied by the key name:
+
+```json
+{
+  "prompts": [
+    {"system": "You are a helpful assistant."},
+    {"user": "Hello, how are you?"},
+    {"assistant": "I'm doing well, thank you for asking!"},
+    {"user": "Tell me a joke."}
+  ]
+}
+```
+
+### How JSON Input is Processed
+
+When a JSON input is detected:
+
+1. If the JSON contains a `prompts` array, aici will extract the conversation context
+2. System messages are used to set the system instructions
+3. The last user message is used as the primary prompt
+4. All messages are preserved in the conversation context
+5. The AI response will consider the entire conversation history
+
+### Example Usage
+
+```bash
+# Using a JSON file with conversation context
+$ cat conversation.json | aici -
+
+# Creating a JSON conversation inline
+$ echo '{"prompts": [{"system": "You are a helpful assistant."}, {"user": "Tell me a joke about programming."}]}' | aici -
+```
+
+### Fallback Behavior
+
+If the input starts with `{` and ends with `}` but cannot be parsed as valid JSON, or if the JSON doesn't contain the expected structure, aici will treat the entire input as plain text.
+
 💨 output to clipboard 📋
 
 ```

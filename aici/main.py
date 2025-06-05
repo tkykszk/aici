@@ -26,6 +26,7 @@ import pyperclip
 import logging
 import time
 import random
+import json
 from . import __version__
 from .i18n import get_message
 
@@ -98,6 +99,7 @@ def query_chatgpt(
     model: str = DEFAULT_MODEL,
     system: str = DEFAULT_SYSTEM,
     output=sys.stdout,
+    conversation_context=None,
 ) -> None:
     """Sends a prompt to the OpenAI ChatGPT API and handles the response, either streaming or complete.
 
@@ -118,14 +120,28 @@ def query_chatgpt(
     """
 
     try:
+        # Prepare messages for the API call
+        if conversation_context:
+            # Use the provided conversation context
+            messages = conversation_context.copy()
+            # Add system message at the beginning if not already present
+            if not any(msg['role'] == 'system' for msg in messages):
+                messages.insert(0, {"role": "system", "content": system})
+            # Make sure the last message is from the user
+            if not messages or messages[-1]['role'] != 'user':
+                messages.append({"role": "user", "content": prompt})
+        else:
+            # Standard message format
+            messages = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ]
+        
         if complete == False:
             # Streaming response from OpenAI's API
             stream = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
                 stream=True,  # Enable streaming mode
             )
 
@@ -141,10 +157,7 @@ def query_chatgpt(
         else:
             response = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
             )
             # Print a newline at the end
             print(response.choices[0].message.content, flush=True, file=output)
@@ -223,7 +236,57 @@ def main() -> None:
 
         # Check if the prompt is "-" and read from stdin if so
         if args.prompt == "-":
-            prompt = sys.stdin.read().strip()
+            stdin_content = sys.stdin.read().strip()
+            # Check if the input is JSON format (starts and ends with curly braces)
+            if stdin_content.startswith('{') and stdin_content.endswith('}'): 
+                try:
+                    # Parse JSON input
+                    json_data = json.loads(stdin_content)
+                    
+                    # Check if the JSON has a 'prompts' key with a list of messages
+                    if 'prompts' in json_data and isinstance(json_data['prompts'], list):
+                        # Process the prompts as a conversation
+                        messages = []
+                        for item in json_data['prompts']:
+                            if 'role' in item and 'content' in item:
+                                messages.append({"role": item['role'], "content": item['content']})
+                            elif 'system' in item:
+                                messages.append({"role": "system", "content": item['system']})
+                            elif 'user' in item:
+                                messages.append({"role": "user", "content": item['user']})
+                            elif 'assistant' in item:
+                                messages.append({"role": "assistant", "content": item['assistant']})
+                        
+                        # If we have valid messages, use them directly in the API call
+                        if messages:
+                            # Extract system message if present
+                            system_messages = [msg for msg in messages if msg['role'] == 'system']
+                            if system_messages:
+                                args.system = system_messages[0]['content']
+                                # Remove system messages from the list
+                                messages = [msg for msg in messages if msg['role'] != 'system']
+                            
+                            # Use the last user message as the prompt
+                            user_messages = [msg for msg in messages if msg['role'] == 'user']
+                            if user_messages:
+                                prompt = user_messages[-1]['content']
+                            else:
+                                prompt = ""
+                            
+                            # Store the conversation context for later use
+                            args.conversation_context = messages
+                        else:
+                            # Fallback to treating the entire JSON as the prompt
+                            prompt = stdin_content
+                    else:
+                        # Fallback to treating the entire JSON as the prompt
+                        prompt = stdin_content
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, treat it as plain text
+                    prompt = stdin_content
+            else:
+                # Plain text input
+                prompt = stdin_content
         else:
             prompt = args.prompt
 
@@ -243,12 +306,16 @@ def main() -> None:
             console_handler.setLevel(logging.DEBUG)
             logger.addHandler(console_handler)
         
+        # Pass conversation context if available
+        conversation_context = getattr(args, 'conversation_context', None)
+        
         query_chatgpt(
             prompt,
             model=args.model,
             complete=args.complete,
             system=args.system,
             output=buffer,
+            conversation_context=conversation_context,
         )
 
         if args.output == "clip" or args.output == "clipboard":
