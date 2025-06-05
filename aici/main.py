@@ -24,94 +24,45 @@ import openai
 from openai import OpenAI
 import pyperclip
 import logging
-import time
-import random
-import json
 from . import __version__
-from .i18n import get_message
 
-# Log configuration
-logging.basicConfig(level=logging.WARNING, format='%(message)s')
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger("aici")
 
-# Initialize the OpenAI client with your API key
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Check if we're in test mode
+is_test_mode = os.environ.get('AICI_TEST_MODE', 'false').lower() == 'true'
 
-DEFAULT_MODEL = os.getenv("OPENAI_CHATGPT_MODEL", "gpt-4o")
-DEFAULT_SYSTEM = os.getenv("OPENAI_CHATGPT_SYSTEM", "You are a helpful assistant.")
-MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "3"))
-INITIAL_RETRY_DELAY = float(os.getenv("OPENAI_INITIAL_RETRY_DELAY", "1.0"))
-MAX_RETRY_DELAY = float(os.getenv("OPENAI_MAX_RETRY_DELAY", "60.0"))
+# Initialize the DeepSeek client with your API key
+client = OpenAI(
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com"
+)
 
+if is_test_mode:
+    from .mock_api import mock_create
 
-def retry_with_exponential_backoff(func):
-    """Decorator function to implement retry logic
-
-    Args:
-        func: Function to retry
-
-    Returns:
-        wrapper: Wrapper function implementing retry logic
-    """
-    def wrapper(*args, **kwargs):
-        retry_count = 0
-        retry_delay = INITIAL_RETRY_DELAY
-        
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except openai.RateLimitError as e:
-                retry_count += 1
-                if retry_count > MAX_RETRIES:
-                    # Display user-friendly error message
-                    print(f"\n{get_message('error_api_quota')}")
-                    print(f"\n{get_message('solutions_header')}")
-                    print(get_message('solution_check_dashboard'))
-                    print(get_message('solution_check_billing'))
-                    print(get_message('solution_upgrade_plan'))
-                    print(get_message('solution_contact_support'))
-                    # Log detailed information for debugging
-                    logger.debug(f"API quota limit error details: {str(e)}", exc_info=False)
-                    # Exit the program instead of re-raising the exception
-                    sys.exit(1)
-                
-                # Add jitter to avoid collision of simultaneous requests
-                jitter = random.uniform(0, 0.1) * retry_delay
-                sleep_time = retry_delay + jitter
-                
-                # Display user-friendly message
-                print(f"\n{get_message('rate_limit_retry', sleep_time=sleep_time, retry_count=retry_count, max_retries=MAX_RETRIES)}")
-                time.sleep(sleep_time)
-                
-                # Exponential backoff with maximum value
-                retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
-            except Exception as e:
-                # Do not retry other errors
-                raise e
-    
-    return wrapper
+DEFAULT_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+DEFAULT_SYSTEM = os.getenv("DEEPSEEK_SYSTEM", "You are a helpful assistant.")
 
 
-@retry_with_exponential_backoff
-def query_chatgpt(
+def query_deepseek(
     prompt: str,
     complete: bool = False,
     model: str = DEFAULT_MODEL,
     system: str = DEFAULT_SYSTEM,
     output=sys.stdout,
-    conversation_context=None,
-) -> None:
-    """Sends a prompt to the OpenAI ChatGPT API and handles the response, either streaming or complete.
+) -> str:
+    """Sends a prompt to the DeepSeek API and handles the response, either streaming or complete.
 
     Args:
-        prompt (str): The prompt to send to the ChatGPT API.
+        prompt (str): The prompt to send to the DeepSeek API.
         complete (bool): If False, the response will be streamed; if True, the complete response will be retrieved at once. Default is False.
         model (str): The model name to use for the API call. Default is set to the module's DEFAULT_MODEL.
         system (str): The system message to send as context to the API. Default is set to the module's DEFAULT_SYSTEM.
         output (file-like object): The output stream where the response will be written. Default is sys.stdout.
 
     Returns:
-        None: This function doesn't return a value, but it prints the API response to the specified output stream.
+        str: The collected response when in streaming mode, otherwise None.
 
     Raises:
         openai.APIConnectionError: If the server could not be reached.
@@ -119,81 +70,84 @@ def query_chatgpt(
         openai.APIStatusError: If any other non-200-range status code is received.
     """
 
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": prompt},
+    ]
+
     try:
-        # Prepare messages for the API call
-        if conversation_context:
-            # Use the provided conversation context
-            messages = conversation_context.copy()
-            # Add system message at the beginning if not already present
-            if not any(msg['role'] == 'system' for msg in messages):
-                messages.insert(0, {"role": "system", "content": system})
-            # Make sure the last message is from the user
-            if not messages or messages[-1]['role'] != 'user':
-                messages.append({"role": "user", "content": prompt})
+        # Use mock API in test mode
+        if is_test_mode:
+            if complete:
+                # For complete response in test mode
+                response = mock_create(
+                    model=model,
+                    messages=messages,
+                    stream=False
+                )
+                response_content = "Mocked DeepSeek Response"
+                print(response_content, flush=True, file=output)
+                return response_content
+            else:
+                # For streaming response in test mode
+                collected_response = "Mocked DeepSeek Response"
+                print(collected_response, flush=True, file=output)
+                return collected_response
         else:
-            # Standard message format
-            messages = [
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt},
-            ]
-        
-        if complete == False:
-            # Streaming response from OpenAI's API
-            stream = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                stream=True,  # Enable streaming mode
-            )
+            if complete == False:
+                # Streaming response from DeepSeek API
+                stream = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=True,  # Enable streaming mode
+                )
 
-            # Collecting and printing the streamed response
-            collected_response = ""
-            for chunk in stream:
-                chunk_message = chunk.choices[0].delta.content or ""
-                print(chunk_message, end="", flush=True, file=output)
-                collected_response += chunk_message
+                # Collecting and printing the streamed response
+                collected_response = ""
+                for chunk in stream:
+                    chunk_message = chunk.choices[0].delta.content or ""
+                    print(chunk_message, end="", flush=True, file=output)
+                    collected_response += chunk_message
 
-            print()  # Print a newline at the end
-            return collected_response
-        else:
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages,
-            )
-            # Print a newline at the end
-            print(response.choices[0].message.content, flush=True, file=output)
+                print()  # Print a newline at the end
+                return collected_response
+            else:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=False,  # Explicitly disable streaming for complete mode
+                )
+                # Print a newline at the end
+                response_content = response.choices[0].message.content
+                print(response_content, flush=True, file=output)
+                return response_content
 
     except openai.APIConnectionError as e:
-        # Display user-friendly error message
-        print(f"\n{get_message('error_api_connection')}")
-        print(f"\n{get_message('check_internet')}")
-        # Log detailed information for debugging
-        logger.debug(f"Connection error details: {str(e)}", exc_info=False)
-        sys.exit(1)
-    except openai.RateLimitError:
-        # Do nothing here as it will be handled by the retry logic
-        # If maximum retries are exceeded, it will be handled within the retry logic
-        raise
+        logger.error("The server could not be reached", exc_info=e)
+        print(e.__cause__)  # an underlying Exception, likely raised within httpx.
+        return f"Error: Connection failed - {e.__cause__}"
+    except openai.RateLimitError as e:
+        logger.error(
+            "A 429 status code was received; we should back off a bit.", exc_info=e
+        )
+        return "Error: Rate limit exceeded"
     except openai.APIStatusError as e:
-        # Display user-friendly error message
-        print(f"\n{get_message('error_api_status', status_code=e.status_code)}")
-        print(f"\n{get_message('api_retry_later')}")
-        # Log detailed information for debugging
-        logger.debug(f"API error details: {str(e.response)}", exc_info=False)
-        sys.exit(1)
+        logger.error("Another non-200-range status code was received", exc_info=e)
+        print(e.status_code)
+        print(e.response)
+        return f"Error: API status {e.status_code}"
 
 
 def main() -> None:
-    # Declare that we'll use the global variable within the function
-    global MAX_RETRIES
 
     try:
-        parser = argparse.ArgumentParser(description="Query OpenAI's ChatGPT")
+        parser = argparse.ArgumentParser(description="Query DeepSeek AI")
         parser.add_argument(
             "prompt",
             type=str,
             nargs="?",
             default=argparse.SUPPRESS,
-            help='The prompt to send to ChatGPT or "-" to read from stdin',
+            help='The prompt to send to DeepSeek or "-" to read from stdin',
         )
         parser.add_argument(
             "-v", "--version", action="store_true", help="Show version and exit"
@@ -209,20 +163,12 @@ def main() -> None:
         parser.add_argument(
             "-s", "--system", default=DEFAULT_SYSTEM, help="spcify a system content"
         )
-        parser.add_argument(
-            "-V", "--verbose", action="store_true", help="Show detailed error information (for debugging)"
-        )
+        parser.add_argument("-V", "--VERBOSE", help="spcify a verbose output")
         parser.add_argument(
             "-o",
             "--output",
             help='output destination, "clip" for clipboard',
             default=sys.stdout,
-        )
-        parser.add_argument(
-            "--max-retries",
-            type=int,
-            default=MAX_RETRIES,
-            help="Maximum number of retries when API rate limit is reached",
         )
         args = parser.parse_args()
 
@@ -236,57 +182,7 @@ def main() -> None:
 
         # Check if the prompt is "-" and read from stdin if so
         if args.prompt == "-":
-            stdin_content = sys.stdin.read().strip()
-            # Check if the input is JSON format (starts and ends with curly braces)
-            if stdin_content.startswith('{') and stdin_content.endswith('}'): 
-                try:
-                    # Parse JSON input
-                    json_data = json.loads(stdin_content)
-                    
-                    # Check if the JSON has a 'prompts' key with a list of messages
-                    if 'prompts' in json_data and isinstance(json_data['prompts'], list):
-                        # Process the prompts as a conversation
-                        messages = []
-                        for item in json_data['prompts']:
-                            if 'role' in item and 'content' in item:
-                                messages.append({"role": item['role'], "content": item['content']})
-                            elif 'system' in item:
-                                messages.append({"role": "system", "content": item['system']})
-                            elif 'user' in item:
-                                messages.append({"role": "user", "content": item['user']})
-                            elif 'assistant' in item:
-                                messages.append({"role": "assistant", "content": item['assistant']})
-                        
-                        # If we have valid messages, use them directly in the API call
-                        if messages:
-                            # Extract system message if present
-                            system_messages = [msg for msg in messages if msg['role'] == 'system']
-                            if system_messages:
-                                args.system = system_messages[0]['content']
-                                # Remove system messages from the list
-                                messages = [msg for msg in messages if msg['role'] != 'system']
-                            
-                            # Use the last user message as the prompt
-                            user_messages = [msg for msg in messages if msg['role'] == 'user']
-                            if user_messages:
-                                prompt = user_messages[-1]['content']
-                            else:
-                                prompt = ""
-                            
-                            # Store the conversation context for later use
-                            args.conversation_context = messages
-                        else:
-                            # Fallback to treating the entire JSON as the prompt
-                            prompt = stdin_content
-                    else:
-                        # Fallback to treating the entire JSON as the prompt
-                        prompt = stdin_content
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, treat it as plain text
-                    prompt = stdin_content
-            else:
-                # Plain text input
-                prompt = stdin_content
+            prompt = sys.stdin.read().strip()
         else:
             prompt = args.prompt
 
@@ -294,41 +190,21 @@ def main() -> None:
             buffer = io.StringIO()
         else:
             buffer = sys.stdout
-            
-        # Update the global MAX_RETRIES with the value specified in command line arguments
-        MAX_RETRIES = args.max_retries
-        
-        # Configure detailed logging
-        if args.verbose:
-            logger.setLevel(logging.DEBUG)
-            # Add a handler to output detailed logs to the console
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.DEBUG)
-            logger.addHandler(console_handler)
-        
-        # Pass conversation context if available
-        conversation_context = getattr(args, 'conversation_context', None)
-        
-        query_chatgpt(
+
+        query_deepseek(
             prompt,
             model=args.model,
             complete=args.complete,
             system=args.system,
             output=buffer,
-            conversation_context=conversation_context,
         )
 
         if args.output == "clip" or args.output == "clipboard":
-            pyperclip.copy(buffer.getvalue())
+            pyperclip.copy(buffer.getvalue() if hasattr(buffer, 'getvalue') else str(buffer))
 
     except Exception as e:
-        # Display user-friendly error message
-        print(f"\n{get_message('error_unexpected')}")
-        print(f"\n{str(e)}")
-        print(f"\n{get_message('verbose_info')}")
-        # Log detailed information for debugging
-        logger.debug(f"Error details: {str(e)}", exc_info=args.verbose if 'args' in locals() and hasattr(args, 'verbose') else False)
-        sys.exit(1)
+        logger.error(f"Error", exc_info=e)
+        raise Exception(f"Error: {e}")
 
 
 if __name__ == "__main__":
