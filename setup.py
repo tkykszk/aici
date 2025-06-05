@@ -18,7 +18,13 @@ def read_version():
 setup(
     name="aici",
     version=read_version(),
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests', 'tests.*', '*.tests', '*.tests.*']),
+    package_data={
+        'aici': ['*.py', '*.md'],
+    },
+    exclude_package_data={
+        'aici': ['mock_api.py', 'run_e2e_tests.sh', 'run_e2e_tests_mocked.sh'],
+    },
     description="A command line interface for ChatGPT",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
