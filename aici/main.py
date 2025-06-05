@@ -290,10 +290,26 @@ def main() -> None:
             
         # デバッグモードの設定
         if args.verbose:
+            # ログレベルをDEBUGに設定
             logging.getLogger().setLevel(logging.DEBUG)
             logger.setLevel(logging.DEBUG)
-            logger.debug("デバッグモードが有効化されました")
-            logger.debug("モデル名: %s", args.model)
+            
+            # 標準エラー出力にもログを表示するハンドラーを追加
+            stderr_handler = logging.StreamHandler(sys.stderr)
+            stderr_handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter("%(levelname)s - %(message)s")
+            stderr_handler.setFormatter(formatter)
+            logger.addHandler(stderr_handler)
+            
+            logger.debug("Debug mode enabled")
+            logger.debug("Model: %s", args.model)
+            
+            # 設定ファイルの読み込み状況を表示
+            from . import ENV_FILE, CONFIG_LOADED
+            if CONFIG_LOADED:
+                logger.debug("Config file loaded from: %s", ENV_FILE)
+            else:
+                logger.debug("No config file loaded. Using environment variables.")
             
             # 利用可能なAPIキーの確認
             openai_key = os.getenv("AICI_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")

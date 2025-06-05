@@ -42,9 +42,14 @@ if _API_KEY is None and len(ary) == 0:
         print(f"  - {path}")
     print("\nFor more information, see: https://github.com/tkykszk/aici#-config-environment-variables-or-file")
 
+# 設定ファイルの読み込み状況を記録するグローバル変数
+ENV_FILE = None
+CONFIG_LOADED = False
+
 if len(ary) > 0:
     ENV_FILE = ary[0]
     load_dotenv(ENV_FILE)
+    CONFIG_LOADED = True
     API_KEY = os.environ.get('OPENAI_API_KEY') or os.environ.get('DEEPSEEK_API_KEY')  # env value is prior to config file
 
 if API_KEY is None and _API_KEY is None: # not specified in env file or environment variables
