@@ -394,10 +394,15 @@ def main() -> None:
             help="Specify file containing system message"
         )
         parser.add_argument(
-            "-V", "--verbose", "--VERBOSE", 
+            "-V", "--verbose", "--VERBOSE",
             dest="verbose",
-            action="store_true", 
+            action="store_true",
             help="Show detailed debug information"
+        )
+        parser.add_argument(
+            "--validate-config",
+            action="store_true",
+            help="Validate configuration file and show advice"
         )
         parser.add_argument(
             "-o",
@@ -410,24 +415,50 @@ def main() -> None:
         if args.version:
             print(__version__)
             sys.exit(0)
-            
+
+        # Validate config if requested
+        if args.validate_config:
+            from . import CONFIG_VALIDATION_ERRORS, ENV_FILE, CONFIG_LOADED, show_config_advice
+            if CONFIG_LOADED and ENV_FILE:
+                print(f"✓ Config file found: {ENV_FILE}")
+                if CONFIG_VALIDATION_ERRORS:
+                    show_config_advice()
+                    sys.exit(1)
+                else:
+                    print("✓ Config file is valid")
+                    # Show what keys are available
+                    openai_key = get_api_key("AICI_OPENAI_KEY", "OPENAI_API_KEY")
+                    deepseek_key = get_api_key("AICI_DEEPSEEK_KEY", "DEEPSEEK_API_KEY")
+                    if openai_key:
+                        print(f"✓ OpenAI API key configured: {openai_key[:4]}...{openai_key[-4:]}")
+                    if deepseek_key:
+                        print(f"✓ DeepSeek API key configured: {deepseek_key[:4]}...{deepseek_key[-4:]}")
+                    sys.exit(0)
+            else:
+                print("⚠️  No config file found")
+                show_config_advice()
+                sys.exit(1)
+
         # Set debug mode
         if args.verbose:
             # Set log level to DEBUG
             logger.setLevel(logging.DEBUG)
-            
+
             # Set all handlers' level to DEBUG
             for handler in logger.handlers:
                 if isinstance(handler, logging.StreamHandler):
                     handler.setLevel(logging.DEBUG)
-            
+
             logger.debug("Debug mode enabled")
             logger.debug("Model: %s", args.model)
-            
-            # Show config file loading status
-            from . import ENV_FILE, CONFIG_LOADED
+
+            # Show config file loading status and validation
+            from . import ENV_FILE, CONFIG_LOADED, CONFIG_VALIDATION_ERRORS, show_config_advice
             if CONFIG_LOADED:
                 logger.debug("Config file loaded from: %s", ENV_FILE)
+                # Show validation errors in verbose mode
+                if CONFIG_VALIDATION_ERRORS:
+                    show_config_advice()
             else:
                 logger.debug("No config file loaded. Using environment variables.")
             
