@@ -135,6 +135,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# AICI config files with potential secrets
+config
+.aici
+*.key
+*_key
+*secret*
+*credentials*
+
 # Spyder project settings
 .spyderproject
 .spyproject
