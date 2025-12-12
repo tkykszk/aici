@@ -20,27 +20,57 @@ AICI (AI Chat Interface) is a Python🐍 command-line tool for interacting with 
 
 **Key Features:**
 - Support for OpenAI and DeepSeek models
+- Default model: `gpt-4o-mini` (updated from deprecated `gpt-3.5-turbo`)
 - Streaming responses (or complete responses with `-c`)
 - Custom system messages via direct input or file
 - Clipboard output support
 - Environment variable configuration
 - JSON conversation format support
+- Automatic warnings for deprecated models
 
 # 💻 Command-Line Description:
 
 | Argument       | env val               | Default                      | Type | Description                                               |
 | -------------- | --------------------- | ---------------------------- | ---- | --------------------------------------------------------- |
-| -v, --version  |                       | -                            |      | バージョンを表示して終了                                     |
-| prompt         |                       | -                            | str  | AIに送るプロンプト。"-"を指定すると標準入力から読み込みます    |
-| -m, --model    | AICI_MODEL            | gpt-3.5-turbo                | str  | 使用するモデル名 (gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat など) |
-| -c, --complete |                       | False (default streaming)    | bool | ストリーミングせずに完全な応答を一度に取得      |
-| -s, --system   | AICI_SYSTEM           | You are a helpful assistant. | str  | システムメッセージを指定                                  |
-| -S, --system-file | AICI_SYSTEM_FILE   | -                            | str  | システムメッセージを含むファイルを指定              |
-| -V, --verbose  |                       | False                        | bool | 詳細なデバッグ情報を表示                           |
-| -o, --output   |                       | stdout                       | str  | 出力先を指定。"clip"でクリップボードにコピー                  |
+| -v, --version  |                       | -                            |      | Show version and exit                                     |
+| prompt         |                       | -                            | str  | Prompt to send to AI. Specify "-" to read from stdin    |
+| -m, --model    | AICI_MODEL            | gpt-4o-mini                  | str  | Model name to use (gpt-4o, gpt-4o-mini, gpt-4-turbo, deepseek-chat, etc.) ⚠️ gpt-3.5-turbo deprecated in Feb 2026 |
+| -c, --complete |                       | False (default streaming)    | bool | Get complete response at once without streaming      |
+| -s, --system   | AICI_SYSTEM           | You are a helpful assistant. | str  | Specify system message                                  |
+| -S, --system-file | AICI_SYSTEM_FILE   | -                            | str  | Specify file containing system message              |
+| -V, --verbose  |                       | False                        | bool | Show detailed debug information                           |
+| -o, --output   |                       | stdout                       | str  | Specify output destination. Use "clip" to copy to clipboard                  |
 
 [OpenAI models documentation](https://platform.openai.com/docs/models)
 [DeepSeek models documentation](https://platform.deepseek.com/api)
+
+## 📝 Logging
+
+**Log File Location:**
+
+Aici automatically creates a log file to record API calls, errors, and debug information:
+
+- **If config file exists**: Log file is created in the same directory as your config file
+  - Linux/macOS: `~/.config/aici/aici.log` or `~/.aici/aici.log`
+  - Windows: `%USERPROFILE%\AppData\Local\aici\aici.log`
+
+- **If no config file**: Default location is `~/.config/aici/aici.log`
+
+**Log Levels:**
+- **INFO**: Records all API calls and responses (always logged to file)
+- **WARNING**: Shows warnings in console (e.g., deprecated models)
+- **DEBUG**: Detailed information for troubleshooting (enabled with `-V` flag)
+
+**Viewing Logs:**
+```bash
+# View recent log entries
+tail -f ~/.config/aici/aici.log
+
+# Enable verbose mode to see debug info in console
+aici "Hello" -V
+```
+
+**Note**: If aici cannot write to the log file (e.g., permission denied), it will show a warning and continue without file logging.
 
 ## 📥 input
 
@@ -49,32 +79,137 @@ AICI (AI Chat Interface) is a Python🐍 command-line tool for interacting with 
 
 ## 📤output
 
-💻 std output (streaming, beffering)
+💻 std output (streaming, buffering)
 📋 clipboard
 
 # 🔧 Config Environment Variables or File:
 
 🔑 API keys can be set using environment variables or config files
 
+## API Key Setup
+
+### Getting API Keys
+
+**OpenAI API Key:**
+1. Visit [OpenAI Platform](https://platform.openai.com/)
+2. Sign up or log in to your account
+3. Navigate to [API Keys](https://platform.openai.com/api-keys)
+4. Click "Create new secret key"
+5. Copy the key (starts with `sk-`)
+6. Store it securely - you won't be able to see it again
+
+**DeepSeek API Key:**
+1. Visit [DeepSeek Platform](https://platform.deepseek.com/)
+2. Sign up or log in to your account
+3. Navigate to API Keys section
+4. Generate a new API key
+5. Copy the key (starts with `sk-`)
+6. Store it securely
+
+### Setting Up API Keys
+
+You can configure API keys in two ways:
+
+**Method 1: Environment Variables** (Temporary - current session only)
+```bash
+# Linux/macOS
+export AICI_OPENAI_KEY=sk-your-openai-key-here
+
+# Windows
+set AICI_OPENAI_KEY=sk-your-openai-key-here
+```
+
+**Method 2: Config File** (Permanent - persists across sessions)
+
+Create a config file at one of these locations:
+- Linux/macOS: `~/.config/aici/config` or `~/.aici`
+- Windows: `%USERPROFILE%\AppData\Local\aici\config`
+
+Add your API key to the file:
+```
+AICI_OPENAI_KEY=sk-your-openai-key-here
+```
+
+**Verification:**
+```bash
+# Check if aici can find your API key
+aici --version  # Should not show API key errors
+aici "Hello" -V  # Verbose mode shows configuration loaded
+```
+
 ## Environment Variables
 
+### Priority Order
+
+**API Keys** (in order of priority):
+1. `AICI_OPENAI_KEY` (highest priority for OpenAI models)
+2. `OPENAI_API_KEY` (fallback for OpenAI models)
+3. `AICI_DEEPSEEK_KEY` (highest priority for DeepSeek models)
+4. `DEEPSEEK_API_KEY` (fallback for DeepSeek models)
+
+**Model Selection** (in order of priority):
+1. `-m` command line option (highest priority)
+2. `AICI_MODEL` environment variable
+3. `AICI_OPENAI_MODEL` or `AICI_DEEPSEEK_MODEL` (provider-specific)
+4. Default: `gpt-4o-mini`
+
+**System Message** (in order of priority):
+1. `-s` command line option (highest priority)
+2. `-S` file specified via command line
+3. `AICI_SYSTEM_FILE` environment variable
+4. `AICI_SYSTEM` environment variable
+5. Default: "You are a helpful assistant."
+
+**Note on File Paths (Windows):**
+- File paths are automatically normalized for cross-platform compatibility
+- You can use forward slashes (`/`) even on Windows - they will be converted to backslashes (`\`)
+- Examples that work on Windows:
+  ```cmd
+  set AICI_SYSTEM_FILE=C:/Users/YourName/system.txt
+  set AICI_SYSTEM_FILE=~/Documents/system.txt
+  ```
+  Both will be correctly processed as Windows paths
+
+### Configuration Examples
+
+**Linux/macOS:**
+```bash
+# OpenAI API Key (AICI_OPENAI_KEY takes priority over OPENAI_API_KEY)
+export AICI_OPENAI_KEY=sk-xxxxxxxxxxxxxxxxx
+export OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
+
+# DeepSeek API Key (AICI_DEEPSEEK_KEY takes priority over DEEPSEEK_API_KEY)
+export AICI_DEEPSEEK_KEY=sk-xxxxxxxxxxxxxxxxx
+export DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxx
+
+# Model Selection
+export AICI_MODEL=gpt-4o-mini           # General model selection
+export AICI_OPENAI_MODEL=gpt-4o-mini    # OpenAI specific model
+export AICI_DEEPSEEK_MODEL=deepseek-chat # DeepSeek specific model
+
+# System Message
+export AICI_SYSTEM="You are a helpful assistant."
+export AICI_SYSTEM_FILE=~/path/to/system_message.txt
 ```
-# OpenAI API Key (either one can be used)
+
+**Windows (Command Prompt):**
+```cmd
+# OpenAI API Key (AICI_OPENAI_KEY takes priority over OPENAI_API_KEY)
 set AICI_OPENAI_KEY=sk-xxxxxxxxxxxxxxxxx
 set OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxx
 
-# DeepSeek API Key (either one can be used)
+# DeepSeek API Key (AICI_DEEPSEEK_KEY takes priority over DEEPSEEK_API_KEY)
 set AICI_DEEPSEEK_KEY=sk-xxxxxxxxxxxxxxxxx
 set DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxx
 
 # Model Selection
-set AICI_MODEL=gpt-4o                # General model selection
-set AICI_OPENAI_MODEL=gpt-4o         # OpenAI specific model
-set AICI_DEEPSEEK_MODEL=deepseek-chat # DeepSeek specific model
+set AICI_MODEL=gpt-4o-mini
+set AICI_OPENAI_MODEL=gpt-4o-mini
+set AICI_DEEPSEEK_MODEL=deepseek-chat
 
 # System Message
 set AICI_SYSTEM="You are a helpful assistant."
-set AICI_SYSTEM_FILE=~/path/to/system_message.txt  # システムメッセージをファイルから読み込む
+set AICI_SYSTEM_FILE=C:\path\to\system_message.txt
 ```
 
 ## Config Files
@@ -90,13 +225,13 @@ AICI_DEEPSEEK_KEY=sk-xxxxxxxxxxxxxxxxx
 DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxx
 
 # Model Selection
-AICI_MODEL=gpt-4o
-AICI_OPENAI_MODEL=gpt-4o
+AICI_MODEL=gpt-4o-mini
+AICI_OPENAI_MODEL=gpt-4o-mini
 AICI_DEEPSEEK_MODEL=deepseek-chat
 
 # System Message
 AICI_SYSTEM=You are a helpful assistant.
-AICI_SYSTEM_FILE=~/path/to/system_message.txt  # システムメッセージをファイルから読み込む
+AICI_SYSTEM_FILE=~/path/to/system_message.txt  # Load system message from file
 ```
 
 🖥️ On Windows file path, it is expanded like
@@ -126,20 +261,15 @@ $ echo Hello | aici -
 
 ```
 $ aici -m gpt-4o "What's the weather like today?"
+$ aici -m gpt-4o-mini "What's the weather like today?"
 $ aici -m deepseek-chat "Tell me about quantum computing"
-```
-
-💨 Use a system message file
-
-```
-$ aici -S system.txt "Tell me about quantum computing"
 ```
 
 💨 Use a system message from a file
 
 ```
 $ echo "You are a helpful coding assistant." > system.txt
-$ aici -sf system.txt "How do I write a Python function?"
+$ aici -S system.txt "How do I write a Python function?"
 ```
 
 💨 Enable debug mode
@@ -147,72 +277,6 @@ $ aici -sf system.txt "How do I write a Python function?"
 ```
 $ aici -V "Hello there"
 ```
-
-## 🔄 Advanced Input Formats
-
-## JSON Input Format
-
-Aici supports advanced input formats through stdin, allowing you to provide conversation context and complex prompts using JSON. When using the `-` parameter to read from stdin, aici will automatically detect if the input is JSON and process it accordingly.
-
-### JSON Conversation Format
-
-You can provide a complete conversation context using the following JSON format:
-
-```json
-{
-  "prompts": [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "Hello, how are you?"},
-    {"role": "assistant", "content": "I'm doing well, thank you for asking!"},
-    {"role": "user", "content": "Tell me a joke."}
-  ]
-}
-```
-
-Each prompt in the array should contain a `role` and `content` field. The supported roles are:
-
-- `system`: Sets the system instructions for the AI
-- `user`: Represents messages from the user
-- `assistant`: Represents previous responses from the AI
-
-### Alternative JSON Format
-
-For convenience, aici also supports an alternative format where the role is implied by the key name:
-
-```json
-{
-  "prompts": [
-    {"system": "You are a helpful assistant."},
-    {"user": "Hello, how are you?"},
-    {"assistant": "I'm doing well, thank you for asking!"},
-    {"user": "Tell me a joke."}
-  ]
-}
-```
-
-### How JSON Input is Processed
-
-When a JSON input is detected:
-
-1. If the JSON contains a `prompts` array, aici will extract the conversation context
-2. System messages are used to set the system instructions
-3. The last user message is used as the primary prompt
-4. All messages are preserved in the conversation context
-5. The AI response will consider the entire conversation history
-
-### Example Usage
-
-```bash
-# Using a JSON file with conversation context
-$ cat conversation.json | aici -
-
-# Creating a JSON conversation inline
-$ echo '{"prompts": [{"system": "You are a helpful assistant."}, {"user": "Tell me a joke about programming."}]}' | aici -
-```
-
-### Fallback Behavior
-
-If the input starts with `{` and ends with `}` but cannot be parsed as valid JSON, or if the JSON doesn't contain the expected structure, aici will treat the entire input as plain text.
 
 💨 output to clipboard 📋
 

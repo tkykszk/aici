@@ -26,96 +26,154 @@ import pyperclip
 import logging
 from . import __version__
 
-# デフォルトの設定
-DEFAULT_MODEL = "gpt-3.5-turbo"
+# Default settings
+DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_SYSTEM = "You are a helpful assistant."
 
-# ログ設定 - デフォルトはINFOレベル
+# Log settings - Default is INFO level
 logger = logging.getLogger("aici")
 
-# ログファイルのパスを設定ファイルと同じ場所に設定
+# Flag to track if logging has been initialized
+_logging_initialized = False
+
+# Set log file path to the same location as the config file
 def setup_logging():
+    global _logging_initialized
+
+    # Only initialize once
+    if _logging_initialized:
+        return
+
     from . import ENV_FILE, CONFIG_LOADED
-    
-    # デフォルトのログファイルパス
+
+    # Default log file path
     log_dir = os.path.expanduser("~/.config/aici")
     log_file = os.path.join(log_dir, "aici.log")
-    
-    # 設定ファイルが読み込まれている場合は、そのディレクトリにログファイルを作成
+
+    # If config file is loaded, create log file in that directory
     if CONFIG_LOADED and ENV_FILE:
         config_dir = os.path.dirname(ENV_FILE)
         if os.path.isdir(config_dir):
             log_file = os.path.join(config_dir, "aici.log")
-    
-    # ログディレクトリが存在しない場合は作成を試みる
+
+    # Try to create log directory if it doesn't exist
     log_dir = os.path.dirname(log_file)
     try:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
-        
-        # ログファイルハンドラーを設定
+
+        # Set up log file handler
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         logger.addHandler(file_handler)
-        
+
     except (IOError, PermissionError) as e:
-        # ログファイルに書き込めない場合は警告を出して続行
+        # If can't write to log file, show warning and continue
         print(f"Warning: Could not create log file at {log_file}. Logging to file is disabled.")
         print(f"Error: {str(e)}")
-    
-    # コンソールハンドラーを設定
+
+    # Set up console handler
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.WARNING)  # デフォルトは警告以上のみ表示
+    console_handler.setLevel(logging.WARNING)  # Default is to show only warnings and above
     console_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
     logger.addHandler(console_handler)
-    
-    # ロガーのレベルを設定
+
+    # Set logger level
     logger.setLevel(logging.INFO)
 
-# Check if we're in test mode
-is_test_mode = os.environ.get('AICI_TEST_MODE', 'false').lower() == 'true'
+    _logging_initialized = True
 
-# デフォルトモデルを環境変数から取得することも可能
+# Function to check if we're in test mode (check dynamically)
+def is_test_mode():
+    return os.environ.get('AICI_TEST_MODE', 'false').lower() == 'true'
+
+# Default model can also be retrieved from environment variables
 DEFAULT_OPENAI_MODEL = os.getenv("AICI_OPENAI_MODEL", DEFAULT_MODEL)
 DEFAULT_DEEPSEEK_MODEL = os.getenv("AICI_DEEPSEEK_MODEL", "deepseek-chat")
 
-# モデル名に基づいてAPIプロバイダーを選択する関数
+# Constants
+DEPRECATED_MODELS = {
+    "gpt-3.5-turbo": "Deprecated in February 2026. Migration to gpt-4o-mini is recommended.",
+    "chatgpt-4o-latest": "Deprecated on February 17, 2026. Migration to gpt-4o is recommended.",
+    "gpt-4.5-preview": "Already deprecated. Migration to gpt-4o or gpt-4.1 is recommended."
+}
+
+OPENAI_MODEL_EXAMPLES = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4.1", "gpt-5", "o3"]
+DEEPSEEK_MODEL_EXAMPLES = ["deepseek-chat"]
+
+API_KEY_PREVIEW_LENGTH = 4
+CLIPBOARD_OUTPUTS = {"clip", "clipboard"}
+
+# Helper function to get API key
+def get_api_key(primary_key, fallback_key):
+    """Get API key from environment variables"""
+    return os.getenv(primary_key) or os.getenv(fallback_key)
+
+# Function to select API provider based on model name
 def select_api_provider(model_name):
-    """モデル名に基づいて適切なAPIキーとベースURLを返す"""
+    """Return appropriate API key and base URL based on model name"""
+    # Check for deprecated models and log warning
+    if model_name in DEPRECATED_MODELS:
+        logger.warning("Model '%s' is %s", model_name, DEPRECATED_MODELS[model_name])
+
     if model_name.startswith("deepseek"):
-        # DeepSeekモデルの場合
-        provider_api_key = os.getenv("AICI_DEEPSEEK_KEY") or os.getenv("DEEPSEEK_API_KEY")
+        # For DeepSeek models
+        provider_api_key = get_api_key("AICI_DEEPSEEK_KEY", "DEEPSEEK_API_KEY")
         if not provider_api_key:
-            raise RuntimeError("モデル名がdeepseekで始まる場合、AICI_DEEPSEEK_KEYまたはDEEPSEEK_API_KEYが必要です")
+            raise RuntimeError("When model name starts with deepseek, AICI_DEEPSEEK_KEY or DEEPSEEK_API_KEY is required")
         return provider_api_key, "https://api.deepseek.com"
     else:
-        # それ以外はデフォルトでOpenAIとして扱う
-        provider_api_key = os.getenv("AICI_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
+        # Otherwise treat as OpenAI by default
+        provider_api_key = get_api_key("AICI_OPENAI_KEY", "OPENAI_API_KEY")
         if not provider_api_key:
-            raise RuntimeError("モデル名がdeepseekで始まらない場合、AICI_OPENAI_KEYまたはOPENAI_API_KEYが必要です")
+            raise RuntimeError("When model name doesn't start with deepseek, AICI_OPENAI_KEY or OPENAI_API_KEY is required")
         return provider_api_key, "https://api.openai.com/v1"
 
-# 初期化時はクライアントをNoneに設定し、必要に応じて作成する
-client = None
+# Client cache for reuse
+_client_cache = {}
 
-if is_test_mode:
-    from .mock_api import mock_create
+def get_or_create_client(api_key, base_url):
+    """Get cached client or create new one"""
+    cache_key = (api_key, base_url)
+    if cache_key not in _client_cache:
+        _client_cache[cache_key] = OpenAI(
+            api_key=api_key,
+            base_url=base_url
+        )
+    return _client_cache[cache_key]
 
-# 環境変数からシステムメッセージを取得
+# Get system message from environment variable
 DEFAULT_SYSTEM = os.getenv("AICI_SYSTEM", DEFAULT_SYSTEM)
 
-# システムメッセージをファイルから読み込む関数
+# Helper function to normalize file path for cross-platform compatibility
+def normalize_path(file_path):
+    """Normalize file path to handle both forward and backward slashes on Windows
+
+    Args:
+        file_path (str): File path that may contain forward slashes
+
+    Returns:
+        str: Normalized file path with proper separators for the OS
+    """
+    # Expand user home directory first
+    expanded = os.path.expanduser(file_path)
+    # Normalize path separators (converts / to \\ on Windows, keeps / on Unix)
+    normalized = os.path.normpath(expanded)
+    return normalized
+
+# Function to load system message from file
 def read_system_from_file(file_path):
-    """ファイルからシステムメッセージを読み込む"""
+    """Load system message from file"""
     try:
-        with open(os.path.expanduser(file_path), 'r', encoding='utf-8') as f:
+        normalized_path = normalize_path(file_path)
+        with open(normalized_path, 'r', encoding='utf-8') as f:
             return f.read().strip()
     except Exception as e:
-        logger.error("システムメッセージファイルの読み込みエラー: %s", e)
+        logger.error("Error loading system message file: %s", e)
         return None
 
-# 環境変数からシステムメッセージファイルを取得
+# Get system message file from environment variable
 system_file = os.getenv("AICI_SYSTEM_FILE")
 if system_file:
     file_content = read_system_from_file(system_file)
@@ -147,17 +205,13 @@ def query_deepseek(
         openai.RateLimitError: If the API rate limit is exceeded (429 status code).
         openai.APIStatusError: If any other non-200-range status code is received.
     """
-    # モデル名に基づいてAPIプロバイダーを選択
-    global client
+    # Select API provider based on model name
     provider_api_key, provider_base_url = select_api_provider(model)
-    
-    # 新しいクライアントを作成
-    client = OpenAI(
-        api_key=provider_api_key,
-        base_url=provider_base_url
-    )
-    
-    logger.debug("選択されたAPIプロバイダー: %s", provider_base_url)
+
+    # Get or create cached client
+    client = get_or_create_client(provider_api_key, provider_base_url)
+
+    logger.debug("Selected API provider: %s", provider_base_url)
 
     messages = [
         {"role": "system", "content": system},
@@ -166,7 +220,8 @@ def query_deepseek(
 
     try:
         # Use mock API in test mode
-        if is_test_mode:
+        if is_test_mode():
+            from .mock_api import mock_create
             if complete:
                 # For complete response in test mode
                 response = mock_create(
@@ -192,14 +247,14 @@ def query_deepseek(
                 )
 
                 # Collecting and printing the streamed response
-                collected_response = ""
+                chunks = []
                 for chunk in stream:
                     chunk_message = chunk.choices[0].delta.content or ""
                     print(chunk_message, end="", flush=True, file=output)
-                    collected_response += chunk_message
+                    chunks.append(chunk_message)
 
                 print()  # Print a newline at the end
-                return collected_response
+                return ''.join(chunks)
             else:
                 response = client.chat.completions.create(
                     model=model,
@@ -213,7 +268,7 @@ def query_deepseek(
 
     except openai.APIConnectionError as e:
         logger.error("The server could not be reached", exc_info=e)
-        # ログにはエラーの詳細を残すが、ユーザーには簡潔なメッセージを表示
+        # Keep detailed error in logs, but show concise message to user
         return "Error: Could not connect to the server. Please check your internet connection."
     except openai.RateLimitError as e:
         logger.error(
@@ -222,13 +277,13 @@ def query_deepseek(
         return "Error: API rate limit exceeded. Please wait a moment and try again."
     except openai.NotFoundError as e:
         logger.error("404 Not Found error occurred", exc_info=e)
-        # 404エラーの場合はモデル名に関するエラーメッセージを表示
+        # For 404 errors, show error message related to model name
         error_message = str(e)
         if "model" in error_message.lower() and "not exist" in error_message.lower():
-            # 利用可能なモデルの例を表示
-            openai_examples = "gpt-3.5-turbo, gpt-4, gpt-4o"
-            deepseek_examples = "deepseek-chat"
-            
+            # Show examples of available models
+            openai_examples = ", ".join(OPENAI_MODEL_EXAMPLES)
+            deepseek_examples = ", ".join(DEEPSEEK_MODEL_EXAMPLES)
+
             if model.startswith("deepseek"):
                 return f"Error: Model '{model}' does not exist or you do not have access to it.\nAvailable DeepSeek models: {deepseek_examples}"
             elif model.startswith("gpt") or model.startswith("chatgpt"):
@@ -239,7 +294,7 @@ def query_deepseek(
             return "Error: API endpoint not found. Please check if the API version or URL is correct."
     except openai.APIStatusError as e:
         logger.error("Non-200-range status code was received", exc_info=e)
-        # ステータスコードに応じたメッセージ
+        # Message based on status code
         if hasattr(e, 'status_code'):
             if e.status_code == 401:
                 return "Error: Authentication failed. Please check if your API key is correct."
@@ -251,21 +306,50 @@ def query_deepseek(
             return "Error: The API server returned an error."
 
 
+def query_chatgpt(
+    prompt: str,
+    complete: bool = False,
+    model: str = DEFAULT_MODEL,
+    system: str = DEFAULT_SYSTEM,
+    output=sys.stdout,
+) -> str:
+    """Sends a prompt to the ChatGPT API and handles the response, either streaming or complete.
+
+    This function is an alias for query_deepseek and provides backward compatibility.
+
+    Args:
+        prompt (str): The prompt to send to the API.
+        complete (bool, optional): Whether to return the complete response or stream it. Defaults to False.
+        model (str, optional): The model to use. Defaults to DEFAULT_MODEL.
+        system (str, optional): The system message to use. Defaults to DEFAULT_SYSTEM.
+        output (optional): Where to write the output. Defaults to sys.stdout.
+
+    Returns:
+        str: The complete response if complete=True, otherwise an empty string.
+
+    Raises:
+        openai.APIConnectionError: If the server could not be reached.
+        openai.RateLimitError: If the API rate limit is exceeded (429 status code).
+        openai.APIStatusError: If any other non-200-range status code is received.
+    """
+    return query_deepseek(prompt, complete, model, system, output)
+
+
 def main() -> None:
     """Main function for the CLI"""
-    # ログ設定を初期化
+    # Initialize log settings
     setup_logging()
     
     try:
         parser = argparse.ArgumentParser(
-            description="AICI - AI Chat Interface: OpenAI/DeepSeekモデルを簡単に利用するコマンドラインツール",
+            description="AICI - AI Chat Interface: Command line tool for easy use of OpenAI/DeepSeek models",
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog="""例:
-  aici "日本の首都はどこですか"                  # 基本的な使い方
-  aici -m gpt-4o "日本の首都はどこですか"        # モデルを指定
-  aici -S system.txt "日本の首都はどこですか"   # システムメッセージファイルを指定
-  aici -o clip "日本の首都はどこですか"        # 結果をクリップボードにコピー
-  echo "日本の首都はどこですか" | aici -       # 標準入力から読み込み
+            epilog="""Examples:
+  aici "What is the capital of Japan"                  # Basic usage
+  aici -m gpt-4o "What is the capital of Japan"        # Specify model
+  aici -S system.txt "What is the capital of Japan"   # Specify system message file
+  aici -o clip "What is the capital of Japan"        # Copy result to clipboard
+  echo "What is the capital of Japan" | aici -       # Read from standard input
 """
         )
         parser.add_argument(
@@ -273,12 +357,12 @@ def main() -> None:
             type=str,
             nargs="?",
             default=argparse.SUPPRESS,
-            help='AIに送るプロンプト。"-"を指定すると標準入力から読み込みます',
+            help='Prompt to send to AI. Specify "-" to read from standard input',
         )
         parser.add_argument(
-            "-v", "--version", action="store_true", help="バージョンを表示して終了"
+            "-v", "--version", action="store_true", help="Show version and exit"
         )
-        # モデル名はコマンドライン引数か環境変数から取得
+        # Get model name from command line argument or environment variable
         default_model = DEFAULT_MODEL
         if os.getenv("AICI_MODEL"):
             default_model = os.getenv("AICI_MODEL")
@@ -287,35 +371,38 @@ def main() -> None:
         elif os.getenv("AICI_DEEPSEEK_MODEL") and not os.getenv("AICI_OPENAI_MODEL"):
             default_model = os.getenv("AICI_DEEPSEEK_MODEL")
             
+        # Create model examples for help text
+        model_examples = ", ".join(OPENAI_MODEL_EXAMPLES[:3] + DEEPSEEK_MODEL_EXAMPLES)
+
         parser.add_argument(
-            "-m", "--model", 
-            default=default_model, 
-            help="使用するモデル名 (gpt-3.5-turbo, gpt-4, gpt-4o, deepseek-chat など)"
+            "-m", "--model",
+            default=default_model,
+            help=f"Model name to use (e.g., {model_examples})"
         )
         parser.add_argument(
             "-c",
             "--complete",
             default=False,
             action="store_true",
-            help="ストリーミングせずに完全な応答を一度に取得",
+            help="Get complete response at once without streaming",
         )
         parser.add_argument(
-            "-s", "--system", default=DEFAULT_SYSTEM, help="システムメッセージを指定"
+            "-s", "--system", default=DEFAULT_SYSTEM, help="Specify system message"
         )
         parser.add_argument(
             "-S", "--system-file", 
-            help="システムメッセージを含むファイルを指定"
+            help="Specify file containing system message"
         )
         parser.add_argument(
             "-V", "--verbose", "--VERBOSE", 
             dest="verbose",
             action="store_true", 
-            help="詳細なデバッグ情報を表示"
+            help="Show detailed debug information"
         )
         parser.add_argument(
             "-o",
             "--output",
-            help='出力先を指定。"clip"でクリップボードにコピー',
+            help='Specify output destination. Use "clip" to copy to clipboard',
             default=sys.stdout,
         )
         args = parser.parse_args()
@@ -324,12 +411,12 @@ def main() -> None:
             print(__version__)
             sys.exit(0)
             
-        # デバッグモードの設定
+        # Set debug mode
         if args.verbose:
-            # ログレベルをDEBUGに設定
+            # Set log level to DEBUG
             logger.setLevel(logging.DEBUG)
             
-            # すべてのハンドラーのレベルをDEBUGに設定
+            # Set all handlers' level to DEBUG
             for handler in logger.handlers:
                 if isinstance(handler, logging.StreamHandler):
                     handler.setLevel(logging.DEBUG)
@@ -337,28 +424,28 @@ def main() -> None:
             logger.debug("Debug mode enabled")
             logger.debug("Model: %s", args.model)
             
-            # 設定ファイルの読み込み状況を表示
+            # Show config file loading status
             from . import ENV_FILE, CONFIG_LOADED
             if CONFIG_LOADED:
                 logger.debug("Config file loaded from: %s", ENV_FILE)
             else:
                 logger.debug("No config file loaded. Using environment variables.")
             
-            # 利用可能なAPIキーの確認
-            openai_key = os.getenv("AICI_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
-            deepseek_key = os.getenv("AICI_DEEPSEEK_KEY") or os.getenv("DEEPSEEK_API_KEY")
-            
+            # Check available API keys
+            openai_key = get_api_key("AICI_OPENAI_KEY", "OPENAI_API_KEY")
+            deepseek_key = get_api_key("AICI_DEEPSEEK_KEY", "DEEPSEEK_API_KEY")
+
             if openai_key:
-                logger.debug("OpenAI APIキー: %s%s", openai_key[:4], '*' * 8)
+                logger.debug("OpenAI API key: %s%s", openai_key[:API_KEY_PREVIEW_LENGTH], '*' * 8)
             else:
-                logger.debug("OpenAI APIキー: 設定されていません")
-                
+                logger.debug("OpenAI API key: Not set")
+
             if deepseek_key:
-                logger.debug("DeepSeek APIキー: %s%s", deepseek_key[:4], '*' * 8)
+                logger.debug("DeepSeek API key: %s%s", deepseek_key[:API_KEY_PREVIEW_LENGTH], '*' * 8)
             else:
-                logger.debug("DeepSeek APIキー: 設定されていません")
+                logger.debug("DeepSeek API key: Not set")
                 
-            # 環境変数のモデル設定を確認
+            # Check model settings in environment variables
             aici_model = os.getenv("AICI_MODEL")
             aici_openai_model = os.getenv("AICI_OPENAI_MODEL")
             aici_deepseek_model = os.getenv("AICI_DEEPSEEK_MODEL")
@@ -370,15 +457,15 @@ def main() -> None:
             if aici_deepseek_model:
                 logger.debug("AICI_DEEPSEEK_MODEL: %s", aici_deepseek_model)
             
-            # モデル名に基づいて使用されるAPIプロバイダーを表示
+            # Show API provider used based on model name
             try:
                 selected_api_key, selected_base_url = select_api_provider(args.model)
-                logger.debug("選択されるAPIキー: %s%s", selected_api_key[:4], '*' * 8)
-                logger.debug("選択されるベースURL: %s", selected_base_url)
+                logger.debug("Selected API key: %s%s", selected_api_key[:API_KEY_PREVIEW_LENGTH], '*' * 8)
+                logger.debug("Selected base URL: %s", selected_base_url)
             except Exception as e:
-                logger.debug("モデル選択エラー: %s", e)
+                logger.debug("Model selection error: %s", e)
 
-        # システムファイルが指定されていれば読み込む
+        # Load system file if specified
         if args.system_file:
             file_content = read_system_from_file(args.system_file)
             if file_content:
@@ -397,17 +484,17 @@ def main() -> None:
         else:
             prompt = args.prompt
 
-        if args.output == "clip" or args.output == "clipboard":
+        if args.output in CLIPBOARD_OUTPUTS:
             buffer = io.StringIO()
         else:
             buffer = sys.stdout
 
-        # デバッグ情報の記録
+        # Record debug information
         if args.verbose:
             prompt_preview = prompt[:50] + ('...' if len(prompt) > 50 else '')
             system_preview = args.system[:50] + ('...' if len(args.system) > 50 else '')
-            logger.debug("プロンプト: %s", prompt_preview)
-            logger.debug("システムメッセージ: %s", system_preview)
+            logger.debug("Prompt: %s", prompt_preview)
+            logger.debug("System message: %s", system_preview)
             
         response = query_deepseek(
             prompt,
@@ -417,17 +504,17 @@ def main() -> None:
             output=buffer,
         )
         
-        # エラーメッセージが返された場合は表示する
+        # Display error message if returned
         if response and response.startswith("Error:"):
             print(response, file=sys.stderr)
             sys.exit(1)
 
-        if args.output == "clip" or args.output == "clipboard":
+        if args.output in CLIPBOARD_OUTPUTS:
             pyperclip.copy(buffer.getvalue() if hasattr(buffer, 'getvalue') else str(buffer))
 
     except Exception as e:
         logger.error("Error", exc_info=e)
-        # スタックトレースを表示せず、ユーザーフレンドリーなエラーメッセージを表示
+        # Don't show stack trace, display user-friendly error message
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
