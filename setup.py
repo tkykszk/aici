@@ -18,7 +18,13 @@ def read_version():
 setup(
     name="aici",
     version=read_version(),
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests', 'tests.*', '*.tests', '*.tests.*']),
+    package_data={
+        'aici': ['*.py', '*.md'],
+    },
+    exclude_package_data={
+        'aici': ['mock_api.py', 'run_e2e_tests.sh', 'run_e2e_tests_mocked.sh'],
+    },
     description="A command line interface for ChatGPT",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
@@ -26,7 +32,7 @@ setup(
     license="MIT",
     include_package_data=True,
     install_requires=[
-        "openai>=1.39.0",  # for compatibility with Py3.7
+        "openai>=1.39.0",
         "pytest",
         "pyperclip",
         "python-dotenv",
@@ -38,8 +44,13 @@ setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",  # Python version
+    python_requires=">=3.8",  # Python version
 )
